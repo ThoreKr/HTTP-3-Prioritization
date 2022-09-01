@@ -1,1 +1,1 @@
-docker build -t constantin/browsertime .
+podman build -t localhost/browsertime:latest .

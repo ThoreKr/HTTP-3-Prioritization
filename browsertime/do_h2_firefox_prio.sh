@@ -1,10 +1,10 @@
 FIREFOXPATH="/tmp/firefox$(date +%s%N)"
 BROWSERTIMEPATH="/browsertime"
 
-docker exec $2-browsertime find $BROWSERTIMEPATH -mindepth 1 -delete
-docker exec $2-browsertime mkdir $FIREFOXPATH
+podman exec $2-browsertime find $BROWSERTIMEPATH -mindepth 1 -delete
+podman exec $2-browsertime mkdir $FIREFOXPATH
 
-docker exec $2-browsertime node /usr/src/app/bin/browsertime.js \
+podman exec $2-browsertime node /usr/src/app/bin/browsertime.js \
     --resultDir $BROWSERTIMEPATH \
     --xvfb true \
     -b firefox \
@@ -16,4 +16,4 @@ docker exec $2-browsertime node /usr/src/app/bin/browsertime.js \
     --useSameDir true\
     "$1" > /tmp/browsertime-$2/docker.log
 
-docker exec $2-browsertime rm -rf $FIREFOXPATH
+podman exec $2-browsertime rm -rf $FIREFOXPATH

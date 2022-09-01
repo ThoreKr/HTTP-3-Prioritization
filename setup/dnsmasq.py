@@ -1,6 +1,8 @@
+import os
+
 from setup.process import run
 from setup.utils import rand_str
-import os
+
 
 def start_dnsmasq(dns_entries, namespace, nsid):
 
@@ -21,7 +23,7 @@ def start_dnsmasq(dns_entries, namespace, nsid):
 
     with open(config_filename,"w") as f:
         f.write(config)
-    
-    args = ["dnsmasq", "--no-resolv", "--no-hosts", "-C", config_filename, "-H", hosts_filename, "-x", pid_filename]
+
+    args = ["dnsmasq", "--no-resolv", "--no-hosts", "-C", config_filename, "-H", hosts_filename, "-x", pid_filename, "-u", "root"]
     p = run(args, namespace)
     return p

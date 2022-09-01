@@ -1,10 +1,10 @@
 CHROMEPATH="/tmp/chrome$(date +%s%N)"
 BROWSERTIMEPATH="/browsertime"
 
-docker exec $2-browsertime find $BROWSERTIMEPATH -mindepth 1 -delete
-docker exec $2-browsertime mkdir $CHROMEPATH
+podman exec $2-browsertime find $BROWSERTIMEPATH -mindepth 1 -delete
+podman exec $2-browsertime mkdir $CHROMEPATH
 
-docker exec $2-browsertime node /usr/src/app/bin/browsertime.js \
+podman exec $2-browsertime node /usr/src/app/bin/browsertime.js \
     --chrome.binaryPath "/opt/comsyschrome/chrome" \
     --chrome.chromedriverPath "/opt/comsyschrome/chromedriver" \
     --chrome.args "user-data-dir=$CHROMEPATH" \
@@ -15,6 +15,7 @@ docker exec $2-browsertime node /usr/src/app/bin/browsertime.js \
     --chrome.args "enable-quic" \
     --chrome.args "quic-version=h3" \
     --chrome.args "origin-to-force-quic-on=*" \
+    --chrome.args "remote-debugging-address=0.0.0.0" \
     --chrome.collectNetLog true \
     --timeouts.pageCompleteCheck $3 \
     --timeouts.pageLoad $3 \
@@ -25,4 +26,4 @@ docker exec $2-browsertime node /usr/src/app/bin/browsertime.js \
     --useSameDir true\
     "$1" > /tmp/browsertime-$2/docker.log
 
-docker exec $2-browsertime rm -rf $CHROMEPATH
+podman exec $2-browsertime rm -rf $CHROMEPATH

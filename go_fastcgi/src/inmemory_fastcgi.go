@@ -14,7 +14,7 @@ import (
 
 	"bou.ke/monkey"
 
-	"MahimahiProtobufs"
+	"github.com/COMSYS/HTTP-3-Prioritization/go_fastcgi/MahimahiProtobufs"
 
 	"github.com/golang/protobuf/proto"
 )

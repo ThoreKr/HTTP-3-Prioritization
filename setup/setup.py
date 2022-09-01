@@ -1,16 +1,19 @@
 #!/usr/bin/python3
 
-from glob import glob
-from setup import h2o, dnsmasq
-from setup.process import run
-import sys
-import time
-import os
-import math
 import json
 import logging
+import math
+import os
+import sys
+import time
+from glob import glob
+from pathlib import Path
 
 from mahimahi import http_record_pb2
+
+from setup import dnsmasq, h2o
+from setup.process import run
+
 
 def runcmd(cmd):
     args = cmd.split(" ")
@@ -51,7 +54,7 @@ def cleanup_processes(nsid):
                 pids.append(f.read().strip())
         except:
             pass
-    
+
     for pid in pids:
         run(["kill", "-9", pid], exceptionok=True)
 
@@ -78,11 +81,11 @@ def cleanup_processes(nsid):
 def setup_browsertime(nsid):
     run(["browsertime/docker/start_docker.sh", nsid])
 
-def setup(nsid, directory, rewrite_file=None, allsameip=False, only_h2=False, prioritization=None,cc="reno"):
+def setup(nsid, directory, path, rewrite_file=None, allsameip=False, only_h2=False, prioritization=None,cc="reno"):
     cleanup(nsid)
     setup_browsertime(nsid)
     setup_namespaces(nsid)
-    return setup_servers(nsid, directory, rewrite_file, allsameip, only_h2, prioritization=prioritization,cc=cc)
+    return setup_servers(nsid, directory, path, rewrite_file, allsameip, only_h2, prioritization=prioritization,cc=cc)
 
 def setup_namespaces(nsid):
     run(["ip", "netns", "add", "%s-servers" % nsid])
@@ -92,7 +95,7 @@ def setup_namespaces(nsid):
         runcmd("ip netns add %s-ns%d" % (nsid, i))
         runcmd("ip netns exec %s-ns%d ip link add br%s%d type bridge" % (nsid, i, nsid, i))
         runcmd("ip netns exec %s-ns%d ip link set dev br%s%d up" % (nsid, i, nsid, i))
-    
+
     for i in range(0, 10, 2):
         runcmd("ip link add veth%s%d type veth peer name veth%s%d" % (nsid, i, nsid, i + 1))
         runcmd("ethtool -K veth%s%d tso off gso off gro off" % (nsid, i))
@@ -147,22 +150,23 @@ def setup_namespaces(nsid):
     runcmd("ip netns exec %s-client ip link set vethd%s3 master brd%s0" % (nsid, nsid, nsid))
     runcmd("ip netns exec %s-client sysctl -w net.ipv4.ip_unprivileged_port_start=1" % nsid)
 
-#   runcmd("ip netns exec %s-client sysctl -w net.ipv4.ip_forward=1" % nsid)
+    runcmd("ip netns exec %s-client sysctl -w net.ipv4.ip_forward=1" % nsid)
     runcmd("ip netns exec %s-servers sysctl -w net.ipv4.ip_forward=1" % nsid)
-    runcmd("ip netns exec %s-servers sysctl -w net.ipv4.ip_forward=1" % nsid)
+    runcmd("ip netns exec %s-browsertime sysctl -w net.ipv4.ip_forward=1" % nsid)
     runcmd("ip netns exec %s-servers sysctl -w net.ipv4.ip_unprivileged_port_start=1" % nsid)
 
     set_bottleneck(nsid, bw=1, rtt=200, bdp=10, first=True)
 
-def setup_servers(nsid, directory, rewrite_file=None, allsameip=False, only_h2=False, prioritization=None, cc="reno"):
+def setup_servers(nsid, directory, path, rewrite_file=None, allsameip=False, only_h2=False, prioritization=None, cc="reno"):
     directory = os.path.abspath(directory)
     files = glob(directory+"/*.save")
 
-    fcgipath = os.path.abspath("temporary/go/%s" % nsid)
+    fcgipath = Path(path) / "go" / nsid
     os.makedirs(fcgipath, exist_ok=False)
-    fcgisocket = fcgipath + "/fcgi.sock"
-    fcgipidfile = fcgipath + "/fcgi.pid"
-    fastcgi = run(["go_fastcgi/src/start.sh", directory, fcgisocket, fcgipidfile], bg=True)
+    fcgisocket: Path = fcgipath / "fcgi.sock"
+    fcgisocket = fcgisocket.as_posix()
+    fcgipidfile: Path = fcgipath / "fcgi.pid"
+    fastcgi = run(["go_fastcgi/src/start.sh", directory, fcgisocket, fcgipidfile.as_posix()], bg=True)
 
     unique_ip = set()
     hostnames_to_ip = {}
@@ -218,7 +222,7 @@ def setup_servers(nsid, directory, rewrite_file=None, allsameip=False, only_h2=F
     for (ip, port), hostnames in unique_ip_and_port_to_hosts.items():
         if not only_h2 and port == 80:
             logging.info("port 80 and quic selected?!")
-        server = h2o.start_h2o(ip, port, hostnames, "%s-servers" % nsid, nsid, fcgisocket, only_h2=only_h2, prioritization=prioritization, cc=cc)
+        server = h2o.start_h2o(ip, port, hostnames, "%s-servers" % nsid, nsid, fcgisocket, path, only_h2=only_h2, prioritization=prioritization, cc=cc)
         servers.append(server)
 
     # DNS stuff

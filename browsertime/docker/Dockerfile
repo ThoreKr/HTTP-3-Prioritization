@@ -1,4 +1,4 @@
-FROM sitespeedio/browsertime:14.8.0
+FROM docker.io/sitespeedio/browsertime:14.8.0
 USER root
 
 RUN apt-get update && apt-get install -y \
@@ -9,11 +9,12 @@ RUN apt-get update && apt-get install -y \
 
 RUN [ -d ~/.pki/nssdb ] || mkdir -p ~/.pki/nssdb
 
-COPY chromium/src/out/Default /opt/comsyschrome
+RUN mkdir /opt/comsyschrome
+COPY chromium/src/out/Default/chrome /opt/comsyschrome/chrome
 
 RUN chown -R root:root /opt/comsyschrome
 
-COPY ../../setup/certificates/RootCA.cert /root/ca.crt
+COPY certificates/RootCA.crt /root/ca.crt
 
 RUN certutil -d sql:/root/.pki/nssdb -A -n 'example ca' -i /root/ca.crt -t TCP,TCP,TCP
 
