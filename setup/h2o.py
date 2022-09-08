@@ -21,7 +21,7 @@ def start_h2o(addr, port, hostnames, namespace, nsid, fcgisocket, path: str, onl
     #path = os.path.abspath("temporary/h2o/%s/%s-%d" % (nsid, idx, port))
     orig_path = path
     path: Path = Path(path) / "h2o"
-    os.makedirs(path)
+    path.mkdir(exist_ok=True)
 
     pid_filename = path / "h2o.pid"
     log_filename = path / "access.log"
@@ -43,7 +43,7 @@ def start_h2o(addr, port, hostnames, namespace, nsid, fcgisocket, path: str, onl
 
         run(cert_args)
     new_cert_path = path / "certificates"
-    shutil.copytree(cert_path, new_cert_path.as_posix())
+    shutil.copytree(cert_path, new_cert_path.as_posix(), dirs_exist_ok=True)
     key_filename = new_cert_path / "cert.key"
     cert_filename = new_cert_path / "cert.crt"
 
@@ -104,5 +104,5 @@ def start_h2o(addr, port, hostnames, namespace, nsid, fcgisocket, path: str, onl
 
     args = ["bash", "-c", "h2o " + " ".join(add_args) + " -c " + config_filename.as_posix()]
 
-    p = run(args, namespace, cwd=path, bg=True, additionalargs={"path":path.as_posix(), "hostnames":hostnames})
+    p = run(args, namespace, cwd=path.as_posix(), bg=True, additionalargs={"path":path.as_posix(), "hostnames":hostnames})
     return p

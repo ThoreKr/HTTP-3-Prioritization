@@ -79,6 +79,8 @@ def cleanup_processes(nsid):
     run(["ip", "link", "del", "veth%s7" % nsid], exceptionok=True)
 
 def setup_browsertime(nsid):
+    browsertime_path = Path(f'/tmp/browsertime-{nsid}')
+    browsertime_path.mkdir(exist_ok=True)
     run(["browsertime/docker/start_docker.sh", nsid])
 
 def setup(nsid, directory, path, rewrite_file=None, allsameip=False, only_h2=False, prioritization=None,cc="reno"):
@@ -163,8 +165,8 @@ def setup_servers(nsid, directory, path, rewrite_file=None, allsameip=False, onl
 
     fcgipath = Path(path) / "go" / nsid
     os.makedirs(fcgipath, exist_ok=False)
-    fcgisocket: Path = fcgipath / "fcgi.sock"
-    fcgisocket = fcgisocket.as_posix()
+    fcgisocketpath: Path = fcgipath / "fcgi.sock"
+    fcgisocket = fcgisocketpath.as_posix()
     fcgipidfile: Path = fcgipath / "fcgi.pid"
     fastcgi = run(["go_fastcgi/src/start.sh", directory, fcgisocket, fcgipidfile.as_posix()], bg=True)
 
