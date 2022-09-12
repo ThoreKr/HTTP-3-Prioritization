@@ -32,39 +32,48 @@ def check_resultfile(outdir: Path):
         return har.exists() and json.exists()
 
 for website in path.glob('*'):
-    print(website.name)
-    site_results = result_dir / website.name
-    if site_results.exists():
-        continue
-    site_results.mkdir(exist_ok=True)
+    for repeat in range(30):
+        print(f'{website.name} - {repeat}')
+        site_results = result_dir / website.name / str(repeat)
+        if site_results.exists():
+            continue
+        site_results.mkdir(exist_ok=True, parents=True)
 
-    site_config = site_config_template.copy()
+        site_config = site_config_template.copy()
 
-    site_config['website'] = website.name
-    site_config['workdir'] = website.as_posix()
+        site_config['website'] = website.name
+        site_config['workdir'] = website.as_posix()
 
-    with TemporaryDirectory() as tmp:
-        dirpath = Path(tmp)
-        outdir = dirpath / 'out'
-        outdir.mkdir()
-        general_config['general']['dir'] = outdir.as_posix()
+        with TemporaryDirectory() as tmp:
+            dirpath = Path(tmp)
+            outdir = dirpath / 'out'
+            outdir.mkdir()
+            general_config['general']['dir'] = outdir.as_posix()
 
-        evalconfig = dirpath / 'evalconfig.json'
-        with evalconfig.open('w') as f:
-            f.write(json.dumps(general_config))
-            f.write('\n')
-            f.write(json.dumps(site_config))
+            evalconfig = dirpath / 'evalconfig.json'
+            with evalconfig.open('w') as f:
+                f.write(json.dumps(general_config))
+                f.write('\n')
+                f.write(json.dumps(site_config))
 
-        simulator_command = ['python3', 'main.py', f'--eval={evalconfig.as_posix()}', 'disp']
+            simulator_command = ['python3', 'main.py', f'--eval={evalconfig.as_posix()}', 'disp']
 
-        proc = subprocess.Popen(simulator_command, stdin=subprocess.PIPE, encoding="ascii")
+            proc = subprocess.Popen(simulator_command, stdin=subprocess.PIPE, encoding="ascii")
 
-        while not check_resultfile(outdir):
+            while not check_resultfile(outdir):
+                time.sleep(5)
+
+            proc.kill()
+
+            for subdir in outdir.glob('*'):
+                browsertime_path = subdir / 'repeat-0' / '0' / 'browsertime'
+                print(browsertime_path.as_posix())
+                shutil.copytree(browsertime_path.as_posix(), site_results, dirs_exist_ok=True)
+
+            # Ensure netns is deconstructed
             time.sleep(5)
-
-        proc.kill()
-
-        for subdir in outdir.glob('*'):
-            browsertime_path = subdir / 'repeat-0' / '0' / 'browsertime'
-            print(browsertime_path.as_posix())
-            shutil.copytree(browsertime_path.as_posix(), site_results, dirs_exist_ok=True)
+            subprocess.run('/usr/bin/ip -all netns delete', shell=True)
+            # netns = Path('/var/run/netns/')
+            # for ns in ['disp-client', 'disp-ns3', 'disp-ns2', 'disp-ns1', 'disp-ns0', 'disp-servers', 'disp-browsertime']:
+            #     nsp = netns / ns
+            #     if nsp.exists():
