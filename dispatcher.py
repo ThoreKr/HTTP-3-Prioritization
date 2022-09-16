@@ -1,3 +1,4 @@
+import datetime
 import json
 import shutil
 import subprocess
@@ -31,8 +32,24 @@ def check_resultfile(outdir: Path):
         json = browsertime_path / 'browsertime.json'
         return har.exists() and json.exists()
 
+
+def track_times(start_time: float, website: str, repeat: int):
+    time_tracker = result_dir / 'times.json'
+    if time_tracker.exists():
+        with time_tracker.open('r') as trackfile:
+            tracker: dict = json.load(trackfile)
+    else:
+        tracker = dict()
+
+    tracker.setdefault(website, dict())[repeat] = time.time() - start_time
+
+    with time_tracker.open('w') as trackfile:
+        json.dump(tracker, trackfile)
+
+
 for website in path.glob('*'):
     for repeat in range(30):
+        start_time = time.time()
         print(f'{website.name} - {repeat}')
         site_results = result_dir / website.name / str(repeat)
         if site_results.exists():
@@ -77,3 +94,5 @@ for website in path.glob('*'):
             # for ns in ['disp-client', 'disp-ns3', 'disp-ns2', 'disp-ns1', 'disp-ns0', 'disp-servers', 'disp-browsertime']:
             #     nsp = netns / ns
             #     if nsp.exists():
+
+        track_times(start_time, website.name, repeat)
